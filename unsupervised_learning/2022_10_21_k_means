@@ -1,0 +1,138 @@
+#cluster the following fabricated data using the k-means algorithm. The data are in feature variable.
+using StatsBase
+using PyPlot
+using Shuffle
+PyPlot.pygui(true) #plot wont show without this
+using ScikitLearn
+@sk_import datasets: make_blobs
+features, labels = make_blobs(n_samples=500, centers=3, cluster_std=0.55, random_state=0)
+    
+scatter(features[:, 1], features[:, 2], color="black")
+
+#exploring data
+
+
+
+
+#features has 500x2, so 2 dimensions (features)
+#OPTIMIZATION function, minimizes distance between cluster centroid and sample locations
+#chose random points as clusters in size of k, then use it to see where cost function is smallest for this by looping through all samples with each centroid and see where distance is smallest
+#save in dictionary
+
+##CLUSTER ASSIGNMENT
+#k points as centroids, choose random centroids
+function cluster_assignment3(samples, k)
+    n=size(samples, 1)
+    centroid_index = sort(StatsBase.sample((1:n), Int(k), replace=false))
+    centroid = samples[centroid_index, :] #chose 3 random rows as centroids
+    
+
+    d=Dict{Int, Vector{Int}}()
+    # d2=Dict{Int, Int}()
+    d3 = zeros(Int, n)
+    
+    for row in 1:size(samples, 1)
+        xi = samples[row, :]
+        cs=[]
+        for crow in 1:size(centroid,1)
+            mu = centroid[crow, :]
+            #print(mu)
+            c=1/n*sum((xi.-mu).^2)
+            push!(cs,c) 
+        end
+        min_index = argmin(cs) #adding c to an array to be able to compare them
+        d3[row] = min_index
+        
+        
+        if !haskey(d,min_index) #adding index of minimal distance to dictionary d
+            d[min_index] = [row]
+        else
+            push!(d[min_index],row)
+        end
+    end
+    return d, d3 # d3 is a vector with all the assigned centroid indexes in correct order
+end
+
+
+
+
+using Plots
+Plots.scatter(features[:, 1], features[:, 2], group=assignments)
+
+
+##CENTROID MOVEMENT
+function centroid_movement(samples, k)
+    d, assignments=cluster_assignment3(samples, k)
+    new_centroids_d=Dict{Int, Any}()
+    for j in 1:k
+        new_centroids_d[j]=[mean(features[d[j], 1]), mean(features[d[j],2])]
+    end
+    return new_centroids_d
+end 
+        
+new_centroids_d= centroid_movement(features, 3) #these are the new centroids (means of clusters)
+
+
+
+#put new centroids back into previous function and rerun 
+
+
+
+samples=features
+k=3
+function best_centroids2(samples, k, threshold=0.01)
+    shuff = shuffle(1:size(samples,1))
+    k_matrix = samples[shuff[1:k], :]
+    dff = 100
+    
+    initial_cluster = cluster_assignment3(samples,k)[1]
+    while dff > threshold
+
+        initial_cluster = cluster_assignment3(samples,k)[1]
+        
+        cm = centroid_movement(samples,k)
+        calculated_means=cm[1]'
+            for j in 2:length(cm)
+                calculated_means = vcat(calculated_means, cm[j]')
+            end
+            
+            dff = sum(sqrt.((calculated_means .- k_matrix).^2))
+            k_matrix = calculated_means
+    end
+    return k_matrix
+end
+
+
+
+
+
+
+
+f =best_centroids2(features, 3)
+f
+
+
+final_assignment = zeros(Int, n)
+    
+for row in 1:size(samples, 1)
+    xi = samples[row, :]
+    cs=[]
+    centroid=f
+    for crow in 1:size(centroid,1)
+        mu = centroid[crow, :]
+        c=1/n*sum((xi.-mu).^2)
+        push!(cs,c) 
+    end
+    min_index = argmin(cs) #adding c to an array to be able to compare them
+    final_assignment[row] = min_index
+end
+
+final_assignment  
+    
+# PLOT
+using Plots
+Plots.scatter(features[:, 1], features[:, 2], group=final_assignment)
+
+
+
+
